@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 )
 
 func main() {
+	log.Info("preparing request")
 	req, _ := http.NewRequest("GET", "https://localhost:8080", nil)
 	trace := &httptrace.ClientTrace{
 		DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
@@ -21,14 +23,24 @@ func main() {
 		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-	if _, err := http.DefaultTransport.RoundTrip(req); err != nil {
-		log.Fatal(err)
-	}
+
+	log.Info("reading client keypair")
 	cert, err := tls.LoadX509KeyPair("./../../client-cert.pem", "./../../client-key.pem")
 	if err != nil {
 		log.Fatalf("client: loadkeys: %s", err)
 	}
-	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+	caCertPool := x509.NewCertPool()
+	trustStore, err := ioutil.ReadFile("./../../CA-cert.pem")
+	if err != nil {
+		log.Fatalf("failed to get client trust store %s", err)
+	}
+	caCertPool.AppendCertsFromPEM(trustStore)
+
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: false,
+		RootCAs:            caCertPool,
+	}
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 	res, err := client.Do(req)
 	if err != nil {

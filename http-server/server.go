@@ -128,8 +128,7 @@ func NewServer(c *ServerConfig, handler http.Handler) (*HTTPServer, error) {
 				certs = append(certs, cert.Bytes()...)
 			}
 		}
-		fmt.Println(string(certs))
-		fmt.Println(string(sKey))
+
 		log.Info("loading server keypair")
 		cert, err := tls.X509KeyPair(certs, sKey)
 		if err != nil {
@@ -140,7 +139,7 @@ func NewServer(c *ServerConfig, handler http.Handler) (*HTTPServer, error) {
 			ClientCAs:    caCertPool,
 			Certificates: []tls.Certificate{cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
-			//CipherSuites: ,
+			//ClientAuth: tls.VerifyClientCertIfGiven,
 			MinVersion: tls.VersionTLS12,
 		}
 		tlsConfig.BuildNameToCertificate()
